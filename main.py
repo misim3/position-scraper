@@ -21,7 +21,17 @@ def checkPage(pageUrl):
         print("오류 발생:", e)
 
 # 회사의 영어 이름은 모두 12자리이내라고 가정하자.
-def makeUrl(defaultPageUrl):
+# 재귀 12번 실행하면서 26자리의 알파벳을 반복한다. => 엄청난 비효율
+# 이 엄청난 비효율을 어떻게 해소할 수 있을까?
+def makeUrl(pageUrl, n):
+    # 도메인 이름은 대소문자 구분이 없기 때문에 소문자만 사용한다.
+    # '', ""의 차이
+    letters = 'abcdefghijklmnopqrstuvwxyz'
+    if n > 12:
+        return # 파이썬에서 종료는 어떻게 하지?
+    for i in letters:
+        makeUrl(pageUrl + i, n + 1)
+        checkPage(pageUrl + '.career.greetinghr.com')
 
 def findOpenPositionPage(pageUrl):
 
@@ -34,4 +44,4 @@ def accessPages(pages):
 
 def main():
     pages = set()
-    makeUrl("https://*.career.greetinghr.com")
+    makeUrl("https://", 0)
