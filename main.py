@@ -6,7 +6,7 @@
 # 그 회사의 채용 홈페이지에 들어가서 /robots.txt 검색 후 내용에 그리팅하이어에서 제작하였다는
 # 문구가 적혀있으면 찾았다.
 # 구글이나 빙의 검색 서비스를 이용하지 않고 회사의 채용 홈페이지를 어떻게 자동으로 찾을 수 있을까?
-import requests
+import requests # request에 대한 이해도 필요
 def checkPage(pageUrl):
     global pages
     try:
@@ -34,14 +34,20 @@ def makeUrl(pageUrl, n):
         checkPage(pageUrl + '.career.greetinghr.com')
 
 def findOpenPositionPage(pageUrl):
-
+    getPositionData(pageUrl)
 def storeData():
 
 def getPositionData(pageUrl):
+    storeData()
 
 def accessPages(pages):
-
+    for page in pages:
+        findOpenPositionPage(page)
 
 def main():
     pages = set()
     makeUrl("https://", 0)
+    accessPages(pages)
+
+if __name__ == "__main__":
+    main()
