@@ -7,6 +7,12 @@
 # 문구가 적혀있으면 찾았다.
 # 구글이나 빙의 검색 서비스를 이용하지 않고 회사의 채용 홈페이지를 어떻게 자동으로 찾을 수 있을까?
 import requests # request에 대한 이해도 필요
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from bs4 import BeautifulSoup
+
+pages = set()
+
 def checkPage(pageUrl):
     global pages
     try:
@@ -34,18 +40,23 @@ def makeUrl(pageUrl, n):
         checkPage(pageUrl + '.career.greetinghr.com')
 
 def findOpenPositionPage(pageUrl):
-    getPositionData(pageUrl)
-def storeData():
-
+    driver = webdriver.Edge()
+    driver.get(pageUrl)
+    details = driver.find_elements(By.TAG_NAME, "a")
+    urls = []
+    for d in details:
+        urls.append(d.get_attribute('href'))
+    for u in urls:
+        if "apply" or "career" in u:
+            getPositionData(u)
 def getPositionData(pageUrl):
-    storeData()
+
 
 def accessPages(pages):
     for page in pages:
         findOpenPositionPage(page)
 
 def main():
-    pages = set()
     makeUrl("https://", 0)
     accessPages(pages)
 
