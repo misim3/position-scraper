@@ -49,8 +49,24 @@ def findOpenPositionPage(pageUrl):
     for u in urls:
         if "apply" or "career" in u:
             getPositionData(u)
-def getPositionData(pageUrl):
+    driver.quit()
 
+def getPositionData(pageUrl):
+    driver = webdriver.Edge()
+    driver.get(pageUrl)
+    details = driver.find_elements(By.TAG_NAME, "a")
+    position_url = driver.current_url + 'o/'
+    urls = []
+    for d in details:
+        urls.append(d.get_attribute('href'))
+    for u in urls:
+        if position_url in u:
+            driver.get(u)
+            html = driver.page_source
+            soup = BeautifulSoup(html, 'html.parser')
+            print(soup.title.get_text())
+            driver.back()
+    driver.quit()
 
 def accessPages(pages):
     for page in pages:
