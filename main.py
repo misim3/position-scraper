@@ -6,6 +6,8 @@
 # 그 회사의 채용 홈페이지에 들어가서 /robots.txt 검색 후 내용에 그리팅하이어에서 제작하였다는
 # 문구가 적혀있으면 찾았다.
 # 구글이나 빙의 검색 서비스를 이용하지 않고 회사의 채용 홈페이지를 어떻게 자동으로 찾을 수 있을까?
+import re
+
 import requests # request에 대한 이해도 필요
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -22,11 +24,15 @@ pages = set()
 # 그러면 urlopen과 requests의 차이점은 뭐냐하면, requests가 사용자를 위한 전처리가 되어있다는 점이다.
 # 여기서 전처리라 함은 예외처리나 나같은 아마추어가 생각하지 못하는 부분에 대한 처리를 의미한다.
 # 추가적으로 urlopen에서의 get과 head의 차이?
+# head는 메타데이터와 같은 get보다 더 적은 양의 데이터를 요청하기 때문에 head로 페이지가 존재하는지 확인하는 게 좋다.
 # 추가적으로 urlopen의 코드?
+# 결국 http connection pool의 send 메소드로 이어진다.
+# http connection pool의 여러 장점이 있다. 그리고 이번 프로젝트의 경우 한 서버에서만 요청을 하기 때문에, 부합한다.
+# @추가적으로 고려해야하는 것은 26**12의 경우를 어느정도의 페이지를 어떤 주기로 확인해야하는지이다.
 def checkPage(pageUrl):
     global pages
     try:
-        #response = requests.get(pageUrl)
+        response = requests.head(pageUrl)
         response.raise_for_status()  # 상태 코드가 200이 아닌 경우 예외 발생
         print("페이지가 존재합니다.")
         pages.add(pageUrl)
@@ -38,7 +44,9 @@ def checkPage(pageUrl):
 
 # 회사의 영어 이름은 모두 12자리이내라고 가정하자.
 # 재귀 12번 실행하면서 26자리의 알파벳을 반복한다. => 엄청난 비효율 26**12 = 95,428,956,661,682,176
-# 이 엄청난 비효율을 어떻게 해소할 수 있을까?
+# @이 엄청난 비효율을 어떻게 해소할 수 있을까?
+# @추가적으로 존재하는 페이지 정보를 파일에 저장하고 파일에 존재하지 않는 페이지 정보를 새롭게 확인하자.
+# @그리고 해당 회사의 채용 공고를 확인하는 것에 대한 주기도 따로 고려하자.
 
 def makeUrl(pageUrl, n):
     # 도메인 이름은 대소문자 구분이 없기 때문에 소문자만 사용한다.
@@ -50,21 +58,19 @@ def makeUrl(pageUrl, n):
             #checkPage(pageUrl + '.career.greetinghr.com')
 
 def findOpenPositionPage(pageUrl):
-    driver = webdriver.Edge()
-    driver.get(pageUrl)
-    details = driver.find_elements(By.TAG_NAME, "a")
-    urls = []
-    for d in details:
-        urls.append(d.get_attribute('href'))
-    for u in urls:
-        if "apply" or "career" in u:
-            getPositionData(u)
-    driver.quit()
+    html = requests.get(pageUrl)
+    bs = BeautifulSoup(html, 'html.parser')
+    pattern = re.compile(r'.*(apply|career).*')
+    # findAll이 아닌 이유는 그리팅 하이어 서비스의 경우 여러 페이지에서 공고를 확인할 수 있다.
+    # 따라서 걸리는 것 하나에서만 찾으면 된다.
+    # @apply나 career 페이지가 없고 바로 공고만 존재하는 경우는 어떻게 처리할 것인지 고려
+    for link in bs.find('a', href=pattern):
+        getPositionData(link)
 
 def getPositionData(pageUrl):
     #동시에 driver 사용이 불가능하다.
-    #따라서 병렬 처리를 해주거나 아예 다른 방법을 사용해야 한다.
-    #requests와 selenium을 이용한 방식 등 에 대해 자세히 알아볼 필요가 있다.
+    #@따라서 병렬 처리를 해주거나 아예 다른 방법을 사용해야 한다.
+    #@requests와 selenium을 이용한 방식 등 에 대해 자세히 알아볼 필요가 있다.
     driver = webdriver.Edge()
     driver.get(pageUrl)
     details = driver.find_elements(By.TAG_NAME, "a")
