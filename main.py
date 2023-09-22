@@ -7,13 +7,11 @@
 # 문구가 적혀있으면 찾았다.
 # 구글이나 빙의 검색 서비스를 이용하지 않고 회사의 채용 홈페이지를 어떻게 자동으로 찾을 수 있을까?
 import re
-
 import requests # request에 대한 이해도 필요
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from bs4 import BeautifulSoup
-
-pages = set()
+import mysql.connector
 
 # 아래의 checkPage의 과정이 그리팅 하이어 서버에 부하를 주는가? 에 대한 정보가 필요하다.
 # 엄청난 부하를 준다. 죄송하네.. 없는 페이지의 정보를 요청하는 것도 부하를 가한다... 큰일이네.
@@ -29,13 +27,31 @@ pages = set()
 # 결국 http connection pool의 send 메소드로 이어진다.
 # http connection pool의 여러 장점이 있다. 그리고 이번 프로젝트의 경우 한 서버에서만 요청을 하기 때문에, 부합한다.
 # @추가적으로 고려해야하는 것은 26**12의 경우를 어느정도의 페이지를 어떤 주기로 확인해야하는지이다.
-def checkPage(pageUrl):
+
+pages = set()
+
+def loadUrlDb():
     global pages
+    cnx = mysql.connector.connect(user='', password='', host='', database='')
+    cursor = cnx.cursor()
+
+    query = ("SELECT url FROM pages ")
+
+    # Insert new employee
+    cursor.execute(query)
+
+    for url in cursor:
+        pages.add(url)
+
+    cursor.close()
+    cnx.close()
+
+def checkPage(pageUrl):
     try:
         response = requests.head(pageUrl)
         response.raise_for_status()  # 상태 코드가 200이 아닌 경우 예외 발생
         print("페이지가 존재합니다.")
-        pages.add(pageUrl)
+        # storeUrl(pageUrl)
         # 여기에 상태 코드가 200인 경우 수행하고자 하는 동작을 추가하세요.
     except requests.exceptions.HTTPError as e:
         print("페이지가 존재하지 않습니다. 상태 코드:", e.response.status_code)
@@ -45,8 +61,30 @@ def checkPage(pageUrl):
 # 회사의 영어 이름은 모두 12자리이내라고 가정하자.
 # 재귀 12번 실행하면서 26자리의 알파벳을 반복한다. => 엄청난 비효율 26**12 = 95,428,956,661,682,176
 # @이 엄청난 비효율을 어떻게 해소할 수 있을까?
-# @추가적으로 존재하는 페이지 정보를 db에 저장하고 새로운 페이지 확인하면 추가하자.
+# 추가적으로 존재하는 페이지 정보를 db에 저장하고 새로운 페이지 확인하면 추가하자.
 # @그리고 해당 회사의 채용 공고를 확인하는 것에 대한 주기도 따로 고려하자.
+
+
+# 여기서 문제점이 있다. db에 저장된 url 데이터를 읽고 그것을 제외한 나머지의 페이지만 탐색하려고 했는데,
+# 그러면 모든 makePage에 url 데이터를 함께 파라미터로 넣어줘야한다.
+# 그러면 엄청난 재귀에서 url 데이터도 함께 하여 또 엄청난 비효율이 발생한다.
+# 읽어온 url 데이터를 글로벌 변수로 만들어서 makePage에서 url 데이터에 이미 존재하는 url은 제외시키고 checkPage를 호출하자.
+def storeUrl(page):
+    cnx = mysql.connector.connect(user='', password='', host='', database='')
+    cursor = cnx.cursor()
+
+    add_page = ("INSERT INTO pages "
+                    "(url) "
+                    "VALUES (%s)")
+
+    # Insert new employee
+    cursor.execute(add_page, page)
+
+    # Make sure data is committed to the database
+    cnx.commit()
+
+    cursor.close()
+    cnx.close()
 
 def makeUrl(pageUrl, n):
     # 도메인 이름은 대소문자 구분이 없기 때문에 소문자만 사용한다.
@@ -55,7 +93,8 @@ def makeUrl(pageUrl, n):
     if n < 12:
         for i in letters:
             makeUrl(pageUrl + i, n + 1)
-            #checkPage(pageUrl + '.career.greetinghr.com')
+            # if pageUrl not in pages:
+                # checkPage(pageUrl + '.career.greetinghr.com')
 
 def findOpenPositionPage(pageUrl):
     html = requests.get(pageUrl)
@@ -88,18 +127,45 @@ def getPositionData(pageUrl):
             html = driver.page_source
             soup = BeautifulSoup(html, 'html.parser')
             print(soup.title.get_text())
+            # data = {
+            #   'company': company,
+            #   'name': name,
+            #   'experience': experience,
+            #   'type': type,
+            #   'url': url,
+            # }
+            # storePositionData(data)
             driver.back()
     driver.quit()
+
+def storePositionData(data_position):
+    cnx = mysql.connector.connect(user='', password='', host='', database='')
+    cursor = cnx.cursor()
+
+    add_position = ("INSERT INTO positions "
+                    "(company, name, experience, type, url) "
+                    "VALUES (%s, %s, %s, %s, %s)")
+
+    # Insert new employee
+    cursor.execute(add_position, data_position)
+    # emp_no = cursor.lastrowid
+
+    # Make sure data is committed to the database
+    cnx.commit()
+
+    cursor.close()
+    cnx.close()
 
 def accessPages(pages):
     for page in pages:
         findOpenPositionPage(page)
 
 def main():
-    #makeUrl("https://", 0)
-    #print("done makeUrl!")
-    pages.add("https://classum.career.greetinghr.com")
-    accessPages(pages)
+    # loadUrlDb()
+    # makeUrl("https://", 0)
+    # print("done makeUrl!")
+    page_classum = 'https://classum.career.greetinghr.com'
+    accessPages(page_classum)
     print("done accessPages!")
 
 if __name__ == "__main__":
